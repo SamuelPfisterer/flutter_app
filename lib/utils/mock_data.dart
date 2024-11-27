@@ -1,3 +1,4 @@
+// imports
 import 'dart:math';
 import '../models/thought.dart';
 
