@@ -1,12 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/thought.dart';
+import '../utils/mock_data.dart';
 
 final thoughtsProvider = StateNotifierProvider<ThoughtsNotifier, List<Thought>>((ref) {
   return ThoughtsNotifier();
 });
 
 class ThoughtsNotifier extends StateNotifier<List<Thought>> {
-  ThoughtsNotifier() : super([]);
+  ThoughtsNotifier() : super(MockData.generateMockThoughts());
 
   void addThought(Thought thought) {
     state = [...state, thought];

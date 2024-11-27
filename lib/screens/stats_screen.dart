@@ -7,7 +7,7 @@ import '../providers/current_user_provider.dart';
 import '../models/thought.dart';
 import '../utils/mock_data.dart';
 
-enum TimeFrame { daily, weekly, monthly, yearly }
+enum TimeFrame { weekly, monthly }
 
 class _DataPoints {
   final List<FlSpot> real;
@@ -26,7 +26,8 @@ class StatsScreen extends ConsumerStatefulWidget {
 }
 
 class _StatsScreenState extends ConsumerState<StatsScreen> {
-  TimeFrame _selectedTimeFrame = TimeFrame.daily;
+  TimeFrame _selectedTimeFrame = TimeFrame.weekly;
+  int _weekOffset = 0;  // Add week offset state
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +55,10 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                       label: Text(timeFrame.toString().split('.').last),
                       selected: _selectedTimeFrame == timeFrame,
                       onSelected: (selected) {
-                        setState(() => _selectedTimeFrame = timeFrame);
+                        setState(() {
+                          _selectedTimeFrame = timeFrame;
+                          _weekOffset = 0;  // Reset offset when changing view
+                        });
                       },
                     ),
                   );
@@ -62,6 +66,40 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            if (_selectedTimeFrame == TimeFrame.weekly) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: () {
+                      setState(() {
+                        _weekOffset--;
+                      });
+                    },
+                  ),
+                  Text(
+                    _weekOffset == 0
+                        ? 'This Week'
+                        : _weekOffset == -1
+                            ? 'Last Week'
+                            : '${_weekOffset.abs()} Weeks Ago',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: _weekOffset < 0
+                        ? () {
+                            setState(() {
+                              _weekOffset++;
+                            });
+                          }
+                        : null,  // Disable when at current week
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
             Expanded(
               child: thoughts.isEmpty
                   ? Center(child: Text('No thoughts yet'))
@@ -77,42 +115,33 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     final currentUser = ref.watch(currentUserProvider);
     final now = DateTime.now();
     
+    // Configure time frame settings
+    final (period, format, minX, maxX, xInterval) = switch (_selectedTimeFrame) {
+      TimeFrame.weekly => (
+        Duration(days: 1),
+        'E',               // Day format (Mon, Tue, etc.)
+        -6.0,             // 6 days back + today
+        0.0,              // Today
+        1.0,              // Show every day
+      ),
+      TimeFrame.monthly => (
+        Duration(days: 7),  // Weekly period
+        'w',               // Week format
+        -3.0,             // 3 weeks back + current week
+        0.0,              // Current week
+        1.0,              // Show every week
+      ),
+    };
+
+    // Adjust the date range based on week offset for weekly view
+    final adjustedNow = _selectedTimeFrame == TimeFrame.weekly
+        ? now.add(Duration(days: _weekOffset * 7))
+        : now;
+    
     // Add mock data if thoughts list is empty
     if (thoughts.isEmpty) {
       thoughts = MockData.generateMockThoughts();
     }
-
-    // Configure time frame settings
-    final (period, format, minX, maxX, xInterval) = switch (_selectedTimeFrame) {
-      TimeFrame.daily => (
-        Duration(hours: 1),
-        'HH:mm',
-        -23.0,
-        1.0,  // +1 for prediction
-        3.0,
-      ),
-      TimeFrame.weekly => (
-        Duration(days: 1),
-        'E',
-        -6.0,
-        1.0,
-        1.0,
-      ),
-      TimeFrame.monthly => (
-        Duration(days: 1),
-        'd MMM',
-        -29.0,
-        2.0,
-        5.0,
-      ),
-      TimeFrame.yearly => (
-        Duration(days: 30),
-        'MMM',
-        -11.0,
-        1.0,
-        1.0,
-      ),
-    };
 
     // Group and calculate data points
     final spots = _calculateDataPoints(
@@ -122,6 +151,18 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
       minX,
       maxX,
     );
+
+    // Calculate maximum Y value from all data points
+    double maxY = 0;
+    for (var spot in [...spots.real, ...spots.partner]) {
+      if (spot.y > maxY) maxY = spot.y;
+    }
+    // Add 20% padding to the max Y value and round up to nearest 5
+    maxY = (maxY * 1.2).roundToDouble();
+    if (maxY % 5 != 0) {
+      maxY = (maxY / 5).ceil() * 5;
+    }
+    maxY = maxY == 0 ? 10 : maxY;  // Default to 10 if no data
 
     return SizedBox(
       height: 300,
@@ -133,14 +174,38 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
               sideTitles: SideTitles(
                 showTitles: true,
                 interval: xInterval,
+                reservedSize: 42,
                 getTitlesWidget: (value, meta) {
-                  final date = now.add(Duration(
-                    hours: _selectedTimeFrame == TimeFrame.daily ? value.toInt() : 0,
-                    days: _selectedTimeFrame != TimeFrame.daily ? value.toInt() : 0,
+                  final date = adjustedNow.add(Duration(
+                    days: value.toInt() * 7,  // Multiply by 7 for weekly intervals
                   ));
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(DateFormat(format).format(date)),
+                  
+                  // Calculate week difference for monthly view
+                  final weekDiff = value.toInt();
+                  
+                  // Format based on time frame
+                  final text = switch (_selectedTimeFrame) {
+                    TimeFrame.weekly => value == 0 
+                      ? 'Today'
+                      : value == -1
+                        ? 'Yesterday'
+                        : DateFormat('E').format(date),
+                    TimeFrame.monthly => value == 0 
+                      ? 'This week' 
+                      : value == -1 
+                        ? 'Last week'
+                        : value == -2
+                          ? '2 weeks ago'
+                          : '3 weeks ago',
+                  };
+                  
+                  return SideTitleWidget(
+                    axisSide: meta.axisSide,
+                    child: Text(
+                      text,
+                      style: const TextStyle(fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
                   );
                 },
               ),
@@ -148,7 +213,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                interval: 1,
+                interval: maxY <= 20 ? 2 : 5,  // Adjust interval based on range
                 getTitlesWidget: (value, meta) {
                   return Text(value.toInt().toString());
                 },
@@ -165,7 +230,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
           minX: minX,
           maxX: maxX,
           minY: 0,
-          maxY: 10,
+          maxY: maxY,
           lineBarsData: [
             // Current user line
             LineChartBarData(
@@ -211,6 +276,11 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     double maxX,
   ) {
     final now = DateTime.now();
+    // Adjust the reference date based on week offset for weekly view
+    final referenceDate = _selectedTimeFrame == TimeFrame.weekly
+        ? now.add(Duration(days: _weekOffset * 7))
+        : now;
+        
     final Map<double, List<double>> realPoints = {};
     final Map<double, List<double>> partnerPoints = {};
 
@@ -222,15 +292,13 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
 
     // Group thoughts by time period
     for (final thought in thoughts) {
-      final difference = thought.date.difference(now);
+      final difference = thought.date.difference(referenceDate);
       double x = 0;
       
-      if (_selectedTimeFrame == TimeFrame.daily) {
-        x = difference.inHours.toDouble();
-      } else if (_selectedTimeFrame == TimeFrame.yearly) {
-        x = difference.inDays / 30;
+      if (_selectedTimeFrame == TimeFrame.monthly) {
+        x = difference.inDays / 7;   // Weekly points for monthly view
       } else {
-        x = difference.inDays.toDouble();
+        x = difference.inDays.toDouble();  // Daily points for weekly view
       }
       
       if (x >= minX && x <= maxX) {
@@ -242,24 +310,45 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
       }
     }
 
-    // Calculate averages and create spots
+    // Calculate cumulative load and create spots
     List<FlSpot> realSpots = [];
     List<FlSpot> partnerSpots = [];
     List<FlSpot> predictedSpots = [];
 
+    // Helper function to get last known value
+    double getLastKnownValue(List<FlSpot> spots) {
+      return spots.isEmpty ? 0 : spots.last.y;
+    }
+
+    // Process real points - use sum instead of average
     for (final entry in realPoints.entries.where((e) => e.key <= 0)) {
-      final avgLoad = entry.value.isEmpty ? 0.0 : 
-          entry.value.reduce((a, b) => a + b) / entry.value.length;
-      realSpots.add(FlSpot(entry.key, avgLoad));
+      if (entry.value.isNotEmpty) {
+        // Sum up all mental loads for this time point
+        final totalLoad = entry.value.reduce((a, b) => a + b);
+        realSpots.add(FlSpot(entry.key, totalLoad));
+      } else if (realSpots.isNotEmpty) {
+        // If no data for this point, use the last known value
+        realSpots.add(FlSpot(entry.key, getLastKnownValue(realSpots)));
+      }
     }
 
+    // Process partner points - use sum instead of average
     for (final entry in partnerPoints.entries.where((e) => e.key <= 0)) {
-      final avgLoad = entry.value.isEmpty ? 0.0 : 
-          entry.value.reduce((a, b) => a + b) / entry.value.length;
-      partnerSpots.add(FlSpot(entry.key, avgLoad));
+      if (entry.value.isNotEmpty) {
+        // Sum up all mental loads for this time point
+        final totalLoad = entry.value.reduce((a, b) => a + b);
+        partnerSpots.add(FlSpot(entry.key, totalLoad));
+      } else if (partnerSpots.isNotEmpty) {
+        // If no data for this point, use the last known value
+        partnerSpots.add(FlSpot(entry.key, getLastKnownValue(partnerSpots)));
+      }
     }
 
-    // Calculate prediction
+    // Sort spots by x value
+    realSpots.sort((a, b) => a.x.compareTo(b.x));
+    partnerSpots.sort((a, b) => a.x.compareTo(b.x));
+
+    // Calculate predictions
     if (realSpots.isNotEmpty) {
       final lastValue = realSpots.last.y;
       final trend = realSpots.length > 1 
@@ -272,25 +361,25 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
       ];
     }
 
-    // Calculate trend for predictions
-    double trend = 0.0;
-    if (realSpots.length > 1) {
-      trend = (realSpots.last.y - realSpots[realSpots.length - 2].y);
-    }
-
-    double partnerTrend = 0.0;
-    if (partnerSpots.length > 1) {
-      partnerTrend = (partnerSpots.last.y - partnerSpots[partnerSpots.length - 2].y);
+    // Calculate partner prediction
+    List<FlSpot> partnerPredictedSpots = [];
+    if (partnerSpots.isNotEmpty) {
+      final lastValue = partnerSpots.last.y;
+      final trend = partnerSpots.length > 1 
+          ? (partnerSpots.last.y - partnerSpots[partnerSpots.length - 2].y)
+          : 0.0;
+      
+      partnerPredictedSpots = [
+        FlSpot(0, lastValue),
+        FlSpot(maxX, lastValue + (trend * maxX)),
+      ];
     }
 
     return _DataPoints(
-      [...realSpots..sort((a, b) => a.x.compareTo(b.x))],
+      realSpots,
       predictedSpots,
-      [...partnerSpots..sort((a, b) => a.x.compareTo(b.x))],
-      partnerSpots.isEmpty ? [] : [
-        FlSpot(0, partnerSpots.last.y),
-        FlSpot(maxX, partnerSpots.last.y + (partnerTrend * maxX)),
-      ],
+      partnerSpots,
+      partnerPredictedSpots,
     );
   }
 } 
