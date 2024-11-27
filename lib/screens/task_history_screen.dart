@@ -62,8 +62,21 @@ class TaskHistoryScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton.icon(
               onPressed: () async {
+                final currentUser = ref.read(currentUserProvider);
                 final tasks = ref.read(predefinedTasksProvider);
-                await NotificationService.requestHelp(tasks);
+                // Store help request notification for partner
+                await NotificationService.storeNotification(
+                  "Help Request",  // taskTitle
+                  currentUser.name,  // thankedByName (in this case, requestedByName)
+                  currentUser.name == "Franca" ? "Christian" : "Franca",  // partner's name
+                  isHelpRequest: true,  // specify this is a help request
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Help request sent to partner'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
               },
               icon: const Icon(Icons.favorite),
               label: const Text('Ask Partner for Help'),
@@ -229,30 +242,11 @@ class TaskHistoryCard extends ConsumerWidget {
                                 userAvatar: task.userAvatar,
                                 duration: task.duration,
                                 thanked: true,
-                                gifted: task.gifted,
                               );
                               return newState;
                             });
                           },
                     active: task.thanked,
-                  ),
-                  const SizedBox(height: 8),
-                  ActionButton(
-                    label: 'Gift',
-                    onPressed: () => ref.read(taskHistoryProvider.notifier).update((state) {
-                      final newState = List<TaskHistoryItem>.from(state);
-                      newState[index] = TaskHistoryItem(
-                        title: task.title,
-                        userName: task.userName,
-                        completedAt: task.completedAt,
-                        userAvatar: task.userAvatar,
-                        duration: task.duration,
-                        thanked: task.thanked,
-                        gifted: !task.gifted,
-                      );
-                      return newState;
-                    }),
-                    active: task.gifted,
                   ),
                 ],
               ),
@@ -295,8 +289,8 @@ class ActionButton extends StatelessWidget {
     final isDisabled = onPressed == null;
     
     return SizedBox(
-      width: 80,
-      height: 24,
+      width: 100,
+      height: 36,
       child: TextButton(
         onPressed: onPressed,
         style: TextButton.styleFrom(
@@ -305,9 +299,9 @@ class ActionButton extends StatelessWidget {
               : active 
                   ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
                   : Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             side: BorderSide(
               color: isDisabled
                   ? Colors.grey.withOpacity(0.3)
@@ -325,7 +319,7 @@ class ActionButton extends StatelessWidget {
                 : active 
                     ? Theme.of(context).colorScheme.primary
                     : Colors.grey[600],
-            fontSize: 12,
+            fontSize: 14,
           ),
         ),
       ),

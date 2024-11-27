@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'task_history_screen.dart';
 import 'distribution_screen.dart';
 import 'thoughts_screen.dart';
-import 'stats_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,7 +17,6 @@ class _HomeScreenState extends State<HomeScreen> {
     const TaskHistoryScreen(),
     const DistributionScreen(),
     const ThoughtsScreen(),
-    const StatsScreen(),
   ];
 
   @override
@@ -41,10 +39,6 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.psychology),
             label: 'Thoughts',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'Stats',
           ),
         ],
       ),

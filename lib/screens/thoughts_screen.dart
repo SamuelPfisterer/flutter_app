@@ -18,8 +18,15 @@ class _ThoughtsScreenState extends ConsumerState<ThoughtsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final thoughts = ref.watch(thoughtsProvider);
+    final allThoughts = ref.watch(thoughtsProvider);
     final currentUser = ref.watch(currentUserProvider);
+    
+    // Filter thoughts to only show last 24 hours
+    final now = DateTime.now();
+    final thoughts = allThoughts.where((thought) {
+      final difference = now.difference(thought.date);
+      return difference.inHours <= 24;
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(

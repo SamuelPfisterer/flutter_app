@@ -179,137 +179,139 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
         ? _getRecommendedTask(predefinedTasks)
         : null;
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // Original distribution content...
-          // Copy the existing content from the current build method here
-          // Time frame selector
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: DistributionTimeFrame.values.map((frame) {
-              return InkWell(
-                onTap: () {
-                  setState(() {
-                    _timeFrame = frame;
-                  });
-                },
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Original distribution content...
+            // Copy the existing content from the current build method here
+            // Time frame selector
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: DistributionTimeFrame.values.map((frame) {
+                return InkWell(
+                  onTap: () {
+                    setState(() {
+                      _timeFrame = frame;
+                    });
+                  },
+                  child: Column(
+                    children: [
+                      Text(
+                        frame.toString().split('.').last,
+                        style: TextStyle(
+                          color: _timeFrame == frame ? 
+                            Theme.of(context).colorScheme.primary : 
+                            Colors.grey,
+                        ),
+                      ),
+                      if (_timeFrame == frame)
+                        Container(
+                          height: 2,
+                          width: 60,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+            
+            // Message card
+            Card(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   children: [
                     Text(
-                      frame.toString().split('.').last,
-                      style: TextStyle(
-                        color: _timeFrame == frame ? 
-                          Theme.of(context).colorScheme.primary : 
-                          Colors.grey,
-                      ),
+                      'You are getting there!',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    if (_timeFrame == frame)
-                      Container(
-                        height: 2,
-                        width: 60,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   ],
                 ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-          
-          // Message card
-          Card(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Donut chart
+            SizedBox(
+              height: 300,
+              child: PieChart(
+                PieChartData(
+                  sections: [
+                    PieChartSectionData(
+                      value: distribution.partnerPercentage,
+                      title: '${distribution.partnerPercentage.round()}%',
+                      color: AppColors.partnerColor,
+                      radius: 100,
+                    ),
+                    PieChartSectionData(
+                      value: distribution.userPercentage,
+                      title: '${distribution.userPercentage.round()}%',
+                      color: AppColors.userColor,
+                      radius: 100,
+                    ),
+                  ],
+                  sectionsSpace: 2,
+                  centerSpaceRadius: 40,
+                ),
+              ),
+            ),
+            
+            // Legend
+            Padding(
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  Text(
-                    'You are getting there!',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  _buildLegendItem(
+                    'Partner did ${distribution.partnerPercentage.round()}% of the work (${_formatDuration(distribution.partnerDuration)})',
+                    AppColors.partnerColor,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    message,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          
-          // Donut chart
-          SizedBox(
-            height: 300,
-            child: PieChart(
-              PieChartData(
-                sections: [
-                  PieChartSectionData(
-                    value: distribution.partnerPercentage,
-                    title: '${distribution.partnerPercentage.round()}%',
-                    color: AppColors.partnerColor,
-                    radius: 100,
-                  ),
-                  PieChartSectionData(
-                    value: distribution.userPercentage,
-                    title: '${distribution.userPercentage.round()}%',
-                    color: AppColors.userColor,
-                    radius: 100,
+                  const SizedBox(height: 8),
+                  _buildLegendItem(
+                    'You did ${distribution.userPercentage.round()}% of the work (${_formatDuration(distribution.userDuration)})',
+                    AppColors.userColor,
                   ),
                 ],
-                sectionsSpace: 2,
-                centerSpaceRadius: 40,
               ),
             ),
-          ),
-          
-          // Legend
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _buildLegendItem(
-                  'Partner did ${distribution.partnerPercentage.round()}% of the work (${_formatDuration(distribution.partnerDuration)})',
-                  AppColors.partnerColor,
-                ),
-                const SizedBox(height: 8),
-                _buildLegendItem(
-                  'You did ${distribution.userPercentage.round()}% of the work (${_formatDuration(distribution.userDuration)})',
-                  AppColors.userColor,
-                ),
-              ],
-            ),
-          ),
-          
-          if (isImbalanced && distribution.userPercentage < distribution.partnerPercentage) ...[
-            const SizedBox(height: 24),
-            Card(
-              color: AppColors.userColor.withOpacity(0.3),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    const Text(
-                      'Recommended Task to Balance Workload:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(recommendedTask?.title ?? 'No task available'),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: recommendedTask == null ? null : () => _executeTask(context, recommendedTask),
-                      icon: const Icon(Icons.play_arrow),
-                      label: const Text('Execute Task'),
-                    ),
-                  ],
+            
+            if (isImbalanced && distribution.userPercentage < distribution.partnerPercentage) ...[
+              const SizedBox(height: 24),
+              Card(
+                color: AppColors.userColor.withOpacity(0.3),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Recommended Task to Balance Workload:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(recommendedTask?.title ?? 'No task available'),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: recommendedTask == null ? null : () => _executeTask(context, recommendedTask),
+                        icon: const Icon(Icons.play_arrow),
+                        label: const Text('Execute Task'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

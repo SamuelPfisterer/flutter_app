@@ -5,7 +5,6 @@ class TaskHistoryItem {
   final String userAvatar;
   final Duration duration;
   final bool thanked;
-  final bool gifted;
 
   TaskHistoryItem({
     required this.title,
@@ -14,6 +13,5 @@ class TaskHistoryItem {
     required this.userAvatar,
     required this.duration,
     this.thanked = false,
-    this.gifted = false,
   });
 } 

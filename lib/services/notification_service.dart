@@ -29,24 +29,59 @@ class NotificationService {
     });
   }
 
-  static Future<void> requestHelp(List<PredefinedTask> availableTasks) async {
-    if (availableTasks.isEmpty) return;
+  static Future<void> storeNotification(
+    String taskTitle,
+    String thankedByName,
+    String recipientName,
+    {bool isHelpRequest = false}
+  ) async {
+    if (!_pendingNotifications.containsKey(recipientName)) {
+      _pendingNotifications[recipientName] = [];
+    }
+    
+    _pendingNotifications[recipientName]!.add(
+      PendingNotification(
+        taskTitle: taskTitle,
+        thankedByName: thankedByName,
+        isHelpRequest: isHelpRequest,
+      ),
+    );
+  }
 
+  static Future<void> checkAndShowNotifications(String userName) async {
+    if (!_pendingNotifications.containsKey(userName)) return;
+    
+    final notifications = _pendingNotifications[userName] ?? [];
+    for (final notification in notifications) {
+      if (notification.isHelpRequest) {
+        await sendHelpRequestNotification(
+          notification.thankedByName,
+        );
+      } else {
+        await sendThanksNotification(
+          notification.taskTitle,
+          notification.thankedByName,
+        );
+      }
+    }
+    
+    // Clear shown notifications
+    _pendingNotifications[userName]?.clear();
+  }
+
+  static Future<void> sendHelpRequestNotification(String requestedByName) async {
     final isAllowed = await AwesomeNotifications().isNotificationAllowed();
     if (!isAllowed) {
       await AwesomeNotifications().requestPermissionToSendNotifications();
       return;
     }
 
-    final random = Random();
-    final task = availableTasks[random.nextInt(availableTasks.length)];
-
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
-        id: 1,
+        id: 4,  // Different ID for help requests
         channelKey: 'help_requests',
-        title: 'Help Needed! 🏠',
-        body: 'Could you help with: ${task.title} (${task.formattedEffort})?',
+        title: 'Help Needed! 🤝',
+        body: '$requestedByName needs help with household tasks',
       ),
     );
   }
@@ -66,38 +101,6 @@ class NotificationService {
         body: '$thankedByName thanked you for: $taskTitle',
       ),
     );
-  }
-
-  static Future<void> storeNotification(
-    String taskTitle,
-    String thankedByName,
-    String recipientName,
-  ) async {
-    if (!_pendingNotifications.containsKey(recipientName)) {
-      _pendingNotifications[recipientName] = [];
-    }
-    
-    _pendingNotifications[recipientName]!.add(
-      PendingNotification(
-        taskTitle: taskTitle,
-        thankedByName: thankedByName,
-      ),
-    );
-  }
-
-  static Future<void> checkAndShowNotifications(String userName) async {
-    if (!_pendingNotifications.containsKey(userName)) return;
-    
-    final notifications = _pendingNotifications[userName] ?? [];
-    for (final notification in notifications) {
-      await sendThanksNotification(
-        notification.taskTitle,
-        notification.thankedByName,
-      );
-    }
-    
-    // Clear shown notifications
-    _pendingNotifications[userName]?.clear();
   }
 
   static Future<void> notifyImbalance(double difference, PredefinedTask recommendedTask) async {
@@ -127,9 +130,11 @@ class NotificationService {
 class PendingNotification {
   final String taskTitle;
   final String thankedByName;
+  final bool isHelpRequest;
 
   PendingNotification({
     required this.taskTitle,
     required this.thankedByName,
+    this.isHelpRequest = false,
   });
 } 
