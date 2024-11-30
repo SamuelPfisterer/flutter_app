@@ -18,8 +18,15 @@ class _ThoughtsScreenState extends ConsumerState<ThoughtsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final thoughts = ref.watch(thoughtsProvider);
+    final allThoughts = ref.watch(thoughtsProvider);
     final currentUser = ref.watch(currentUserProvider);
+    
+    // Filter thoughts to only show last 24 hours
+    final now = DateTime.now();
+    final thoughts = allThoughts.where((thought) {
+      final difference = now.difference(thought.date);
+      return difference.inHours <= 24;
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -117,7 +124,6 @@ class _ThoughtsScreenState extends ConsumerState<ThoughtsScreen> {
                         
                         return GestureDetector(
                           onTap: () => _showThoughtDetails(context, thought),
-                          onLongPress: () => ref.read(thoughtsProvider.notifier).removeThought(thought),
                           child: Container(
                             width: size,
                             height: size,
@@ -154,6 +160,9 @@ class _ThoughtsScreenState extends ConsumerState<ThoughtsScreen> {
   }
 
   void _showThoughtDetails(BuildContext context, Thought thought) {
+    final currentUser = ref.read(currentUserProvider);
+    final isCurrentUser = thought.userId == currentUser.id;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -180,6 +189,102 @@ class _ThoughtsScreenState extends ConsumerState<ThoughtsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
+          ),
+          if (isCurrentUser) 
+            TextButton(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Delete Thought?'),
+                    content: const Text('Are you sure you want to delete this thought? This action cannot be undone.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          ref.read(thoughtsProvider.notifier).removeThought(thought);
+                          Navigator.pop(context); // Close confirmation dialog
+                          Navigator.pop(context); // Close details dialog
+                        },
+                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showThoughtMenu(BuildContext context, Thought thought) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final Offset offset = button.localToGlobal(Offset.zero);
+
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        offset.dx,
+        offset.dy,
+        offset.dx + button.size.width,
+        offset.dy + button.size.height,
+      ),
+      items: [
+        PopupMenuItem(
+          child: const Row(
+            children: [
+              Icon(Icons.info_outline, size: 20),
+              SizedBox(width: 8),
+              Text('View Details'),
+            ],
+          ),
+          onTap: () => Future.delayed(
+            const Duration(seconds: 0),
+            () => _showThoughtDetails(context, thought),
+          ),
+        ),
+        PopupMenuItem(
+          child: const Row(
+            children: [
+              Icon(Icons.delete_outline, color: Colors.red, size: 20),
+              SizedBox(width: 8),
+              Text('Delete', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+          onTap: () => Future.delayed(
+            const Duration(seconds: 0),
+            () => _showDeleteConfirmation(context, thought),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, Thought thought) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Thought?'),
+        content: const Text('Are you sure you want to delete this thought? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(thoughtsProvider.notifier).removeThought(thought);
+              Navigator.pop(context);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
           ),
         ],
       ),

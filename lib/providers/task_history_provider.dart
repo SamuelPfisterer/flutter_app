@@ -4,6 +4,9 @@ import '../models/predefined_task.dart';
 import '../providers/current_user_provider.dart';
 import 'dart:math';
 
+// A/B testing version provider
+final versionProvider = StateProvider<String>((ref) => 'A');
+
 final taskHistoryProvider = StateNotifierProvider<TaskHistoryNotifier, List<TaskHistoryItem>>((ref) {
   return TaskHistoryNotifier();
 });

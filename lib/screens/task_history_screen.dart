@@ -27,6 +27,16 @@ class TaskHistoryScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          // Version Switch
+          TextButton.icon(
+            onPressed: () {
+              final currentVersion = ref.read(versionProvider);
+              ref.read(versionProvider.notifier).state = 
+                currentVersion == 'A' ? 'B' : 'A';
+            },
+            icon: const Icon(Icons.swap_horiz),
+            label: Text('Version ${ref.watch(versionProvider)}'),
+          ),
           PopupMenuButton<User>(
             icon: CircleAvatar(
               backgroundImage: NetworkImage(ref.watch(currentUserProvider).avatarUrl),
@@ -62,8 +72,21 @@ class TaskHistoryScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton.icon(
               onPressed: () async {
+                final currentUser = ref.read(currentUserProvider);
                 final tasks = ref.read(predefinedTasksProvider);
-                await NotificationService.requestHelp(tasks);
+                // Store help request notification for partner
+                await NotificationService.storeNotification(
+                  "Help Request",  // taskTitle
+                  currentUser.name,  // thankedByName (in this case, requestedByName)
+                  currentUser.name == "Franca" ? "Christian" : "Franca",  // partner's name
+                  isHelpRequest: true,  // specify this is a help request
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Help request sent to partner'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
               },
               icon: const Icon(Icons.favorite),
               label: const Text('Ask Partner for Help'),
@@ -77,6 +100,76 @@ class TaskHistoryScreen extends ConsumerWidget {
               ),
             ),
           ),
+          if (ref.watch(versionProvider) == 'B') ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Complete Task',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: ref.watch(predefinedTasksProvider).map((task) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              final currentUser = ref.read(currentUserProvider);
+                              ref.read(taskHistoryProvider.notifier).addTask(
+                                TaskHistoryItem(
+                                  title: task.title,
+                                  userName: currentUser.name,
+                                  completedAt: DateTime.now(),
+                                  userAvatar: currentUser.avatarUrl,
+                                  duration: task.effort,
+                                ),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Task "${task.title}" completed'),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.check_circle_outline),
+                            label: Text(task.title),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                              foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => const TaskSelectionDialog(),
+                      );
+                    },
+                    icon: const Icon(Icons.edit),
+                    label: const Text('Manage Tasks'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(),
+                ],
+              ),
+            ),
+          ],
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
@@ -89,31 +182,60 @@ class TaskHistoryScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final selectedTask = await showDialog<PredefinedTask>(
-            context: context,
-            builder: (context) => const TaskSelectionDialog(),
-          );
-          
-          if (selectedTask != null) {
-            final currentUser = ref.read(currentUserProvider);
-            ref.read(taskHistoryProvider.notifier).addTask(
-              TaskHistoryItem(
-                title: selectedTask.title,
-                userName: currentUser.name,
-                completedAt: DateTime.now(),
-                userAvatar: currentUser.avatarUrl,
-                duration: selectedTask.effort,
-              ),
-            );
-          }
-        },
-        label: const Text('Execute Task'),
-        icon: const Icon(Icons.add),
-      ),
+      floatingActionButton: ref.watch(versionProvider) == 'A' 
+          ? FloatingActionButton.extended(
+              onPressed: () async {
+                final selectedTask = await showDialog<PredefinedTask>(
+                  context: context,
+                  builder: (context) => const TaskSelectionDialog(),
+                );
+                
+                if (selectedTask != null) {
+                  final currentUser = ref.read(currentUserProvider);
+                  ref.read(taskHistoryProvider.notifier).addTask(
+                    TaskHistoryItem(
+                      title: selectedTask.title,
+                      userName: currentUser.name,
+                      completedAt: DateTime.now(),
+                      userAvatar: currentUser.avatarUrl,
+                      duration: selectedTask.effort,
+                    ),
+                  );
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Task "${selectedTask.title}" completed'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              label: const Text('Execute Task'),
+              icon: const Icon(Icons.add),
+            )
+          : null,
     );
   }
+}
+
+void _quickAddTask(BuildContext context, WidgetRef ref, String title, Duration effort) {
+  final currentUser = ref.read(currentUserProvider);
+  ref.read(taskHistoryProvider.notifier).addTask(
+    TaskHistoryItem(
+      title: title,
+      userName: currentUser.name,
+      completedAt: DateTime.now(),
+      userAvatar: currentUser.avatarUrl,
+      duration: effort,
+    ),
+  );
+  
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('Task "$title" completed'),
+      duration: const Duration(seconds: 2),
+    ),
+  );
 }
 
 class TaskHistoryCard extends ConsumerWidget {
@@ -229,30 +351,11 @@ class TaskHistoryCard extends ConsumerWidget {
                                 userAvatar: task.userAvatar,
                                 duration: task.duration,
                                 thanked: true,
-                                gifted: task.gifted,
                               );
                               return newState;
                             });
                           },
                     active: task.thanked,
-                  ),
-                  const SizedBox(height: 8),
-                  ActionButton(
-                    label: 'Gift',
-                    onPressed: () => ref.read(taskHistoryProvider.notifier).update((state) {
-                      final newState = List<TaskHistoryItem>.from(state);
-                      newState[index] = TaskHistoryItem(
-                        title: task.title,
-                        userName: task.userName,
-                        completedAt: task.completedAt,
-                        userAvatar: task.userAvatar,
-                        duration: task.duration,
-                        thanked: task.thanked,
-                        gifted: !task.gifted,
-                      );
-                      return newState;
-                    }),
-                    active: task.gifted,
                   ),
                 ],
               ),
@@ -295,8 +398,8 @@ class ActionButton extends StatelessWidget {
     final isDisabled = onPressed == null;
     
     return SizedBox(
-      width: 80,
-      height: 24,
+      width: 100,
+      height: 36,
       child: TextButton(
         onPressed: onPressed,
         style: TextButton.styleFrom(
@@ -305,9 +408,9 @@ class ActionButton extends StatelessWidget {
               : active 
                   ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
                   : Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             side: BorderSide(
               color: isDisabled
                   ? Colors.grey.withOpacity(0.3)
@@ -325,7 +428,7 @@ class ActionButton extends StatelessWidget {
                 : active 
                     ? Theme.of(context).colorScheme.primary
                     : Colors.grey[600],
-            fontSize: 12,
+            fontSize: 14,
           ),
         ),
       ),

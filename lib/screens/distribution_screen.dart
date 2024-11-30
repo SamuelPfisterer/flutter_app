@@ -265,10 +265,8 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
     return sortedTasks.first;
   }
 
-  Future<void> _executeTask(BuildContext context, PredefinedTask task) async {
+  void _executeTask(BuildContext context, PredefinedTask task) {
     final currentUser = ref.read(currentUserProvider);
-    
-    // Add task to history
     ref.read(taskHistoryProvider.notifier).addTask(
       TaskHistoryItem(
         title: task.title,
@@ -279,11 +277,12 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
       ),
     );
 
-    // Navigate to task history screen with highlighted task
-    Navigator.pushNamed(
-      context, 
-      '/tasks',
-      arguments: {'highlightedTaskId': task.id},
+    // Show feedback for task completion
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Task "${task.title}" completed'),
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 }

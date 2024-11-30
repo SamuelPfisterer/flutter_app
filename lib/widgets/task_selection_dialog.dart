@@ -40,7 +40,7 @@ class TaskSelectionDialog extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 8),
-            TextButton(
+            TextButton.icon(
               onPressed: () {
                 // Show task management screen
                 Navigator.of(context).pushReplacement(
@@ -49,7 +49,8 @@ class TaskSelectionDialog extends ConsumerWidget {
                   ),
                 );
               },
-              child: const Text('Manage Tasks'),
+              icon: const Icon(Icons.edit),
+              label: const Text('Manage Tasks'),
             ),
           ],
         ),
