@@ -106,12 +106,25 @@ class TaskHistoryScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'Complete Task',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  const Row(
+                    children: [
+                      Text(
+                        'Complete Task',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        '(tap to complete)',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   SingleChildScrollView(
@@ -139,11 +152,15 @@ class TaskHistoryScreen extends ConsumerWidget {
                                 ),
                               );
                             },
-                            icon: const Icon(Icons.check_circle_outline),
+                            icon: const Icon(Icons.add_task),
                             label: Text(task.title),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                               foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
                             ),
                           ),
                         );

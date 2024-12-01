@@ -30,7 +30,7 @@ class _ThoughtsScreenState extends ConsumerState<ThoughtsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mental Load'),
+        title: const Text('Thoughts'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
