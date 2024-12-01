@@ -8,8 +8,8 @@ class AppColors {
   static const Color secondary = Color(0xFFFFE4D6);
   
   // User distinction colors
-  static const Color userColor = Color(0xFFFFD6C4);    // Warmer, brighter peach
-  static const Color partnerColor = Color(0xFFDDE8D4);  // Softer, more muted green
+  static const Color userColor = Color(0xFFFFB199);    // Stronger, more vibrant peach
+  static const Color partnerColor = Color(0xFF9DC88D);  // Stronger, more saturated green
   
   // Text colors
   static const Color onPrimary = Colors.white;

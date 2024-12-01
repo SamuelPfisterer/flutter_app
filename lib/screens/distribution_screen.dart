@@ -40,7 +40,7 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        title: const Text('Distribution'),
+        title: const Text('Work Distribution'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),

@@ -6,6 +6,7 @@ import '../providers/thoughts_provider.dart';
 import '../providers/current_user_provider.dart';
 import '../models/thought.dart';
 import '../utils/mock_data.dart';
+import '../theme/app_theme.dart';
 
 enum TimeFrame { weekly, monthly }
 
@@ -36,7 +37,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        title: const Text('Mental Load Stats'),
+        title: const Text('Mental Load History'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -103,7 +104,29 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             Expanded(
               child: thoughts.isEmpty
                   ? Center(child: Text('No thoughts yet'))
-                  : buildThoughtsChart(thoughts),
+                  : Column(
+                      children: [
+                        Expanded(child: buildThoughtsChart(thoughts)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                          child: Column(
+                            children: [
+                              _buildLegendItem(
+                                'Your mental load',
+                                AppColors.userColor.withOpacity(0.8),
+                                isDashed: false,
+                              ),
+                              const SizedBox(height: 8),
+                              _buildLegendItem(
+                                'Partner\'s mental load',
+                                const Color(0xFF7EA668), // Darker green derived from partnerColor
+                                isDashed: false,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),
@@ -236,14 +259,14 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             LineChartBarData(
               spots: spots.real,
               isCurved: true,
-              color: Theme.of(context).colorScheme.primary,
+              color: AppColors.userColor.withOpacity(0.8),
               dotData: FlDotData(show: true),
             ),
             // Current user prediction
             LineChartBarData(
               spots: spots.predicted,
               isCurved: true,
-              color: Theme.of(context).colorScheme.primary,
+              color: AppColors.userColor.withOpacity(0.8),
               dotData: FlDotData(show: false),
               dashArray: [5, 5],
             ),
@@ -251,14 +274,14 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             LineChartBarData(
               spots: spots.partner,
               isCurved: true,
-              color: Colors.blue,
+              color: const Color(0xFF7EA668), // Darker green derived from partnerColor
               dotData: FlDotData(show: true),
             ),
             // Partner prediction
             LineChartBarData(
               spots: spots.partnerPredicted,
               isCurved: true,
-              color: Colors.blue,
+              color: const Color(0xFF7EA668), // Darker green derived from partnerColor
               dotData: FlDotData(show: false),
               dashArray: [5, 5],
             ),
@@ -382,4 +405,63 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
       partnerPredictedSpots,
     );
   }
+
+  Widget _buildLegendItem(String text, Color color, {bool isDashed = false}) {
+    return Row(
+      children: [
+        Container(
+          width: 24,
+          height: 2,
+          decoration: BoxDecoration(
+            color: color,
+            border: isDashed ? Border.all(color: color) : null,
+          ),
+          child: isDashed
+              ? LayoutBuilder(
+                  builder: (context, constraints) {
+                    return CustomPaint(
+                      size: Size(constraints.maxWidth, 2),
+                      painter: DashedLinePainter(color: color),
+                    );
+                  },
+                )
+              : null,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: const TextStyle(fontSize: 14),
+        ),
+      ],
+    );
+  }
+}
+
+class DashedLinePainter extends CustomPainter {
+  final Color color;
+
+  DashedLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2;
+    
+    const dashWidth = 4;
+    const dashSpace = 4;
+    var start = 0.0;
+    
+    while (start < size.width) {
+      canvas.drawLine(
+        Offset(start, 0),
+        Offset(start + dashWidth, 0),
+        paint,
+      );
+      start += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 } 
