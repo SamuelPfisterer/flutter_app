@@ -30,12 +30,10 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
     
     final distribution = _calculateDistribution(tasks, currentUser.name);
     final message = _generateMessage(distribution);
-    final isImbalanced = (distribution.partnerPercentage - distribution.userPercentage).abs() > 10;
+    final isImbalanced = false;
     
     // Get recommended task if imbalanced
-    final recommendedTask = isImbalanced && distribution.userPercentage < distribution.partnerPercentage
-        ? _getRecommendedTask(predefinedTasks)
-        : null;
+    final recommendedTask = null;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
@@ -106,7 +104,7 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
             
             // Donut chart
             SizedBox(
-              height: 300,
+              height: 200,
               child: PieChart(
                 PieChartData(
                   sections: [
@@ -114,17 +112,17 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
                       value: distribution.partnerPercentage,
                       title: '${distribution.partnerPercentage.round()}%',
                       color: AppColors.partnerColor,
-                      radius: 100,
+                      radius: 60,
                     ),
                     PieChartSectionData(
                       value: distribution.userPercentage,
                       title: '${distribution.userPercentage.round()}%',
                       color: AppColors.userColor,
-                      radius: 100,
+                      radius: 60,
                     ),
                   ],
                   sectionsSpace: 2,
-                  centerSpaceRadius: 40,
+                  centerSpaceRadius: 25,
                 ),
               ),
             ),

@@ -43,7 +43,7 @@ class _ThoughtsScreenState extends ConsumerState<ThoughtsScreen> {
                 TextField(
                   controller: _thoughtController,
                   decoration: const InputDecoration(
-                    labelText: 'What household task is on your mind?',
+                    labelText: 'What is on your mind?',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -78,6 +78,14 @@ class _ThoughtsScreenState extends ConsumerState<ThoughtsScreen> {
                   },
                   icon: const Icon(Icons.add),
                   label: const Text('Add Thought'),
+                  style: ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(context).colorScheme.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
                 ),
               ],
             ),
@@ -99,7 +107,7 @@ class _ThoughtsScreenState extends ConsumerState<ThoughtsScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Text('Your mental load'),
+                      const Text('You'),
                       const SizedBox(width: 32),
                       Container(
                         width: 12,
@@ -110,7 +118,7 @@ class _ThoughtsScreenState extends ConsumerState<ThoughtsScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Text('Partner\'s mental load'),
+                      const Text('Partner'),
                     ],
                   ),
                   const SizedBox(height: 16),
