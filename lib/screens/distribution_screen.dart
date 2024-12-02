@@ -1,16 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import '../providers/task_history_provider.dart';
 import '../providers/current_user_provider.dart';
 import '../providers/predefined_tasks_provider.dart';
+import '../providers/thoughts_provider.dart';
 import '../models/distribution.dart';
 import '../models/task_history_item.dart';
 import '../models/predefined_task.dart';
+import '../models/thought.dart';
 import '../theme/app_theme.dart';
 import '../services/notification_service.dart';
+import '../utils/mock_data.dart';
 
 enum DistributionTimeFrame { daily, weekly, monthly }
+enum TimeFrame { weekly, monthly }
+
+class _DataPoints {
+  final List<FlSpot> real;
+  final List<FlSpot> predicted;
+  final List<FlSpot> partner;
+  final List<FlSpot> partnerPredicted;
+  
+  _DataPoints(this.real, this.predicted, this.partner, this.partnerPredicted);
+}
 
 class DistributionScreen extends ConsumerStatefulWidget {
   const DistributionScreen({super.key});
@@ -21,20 +35,12 @@ class DistributionScreen extends ConsumerStatefulWidget {
 
 class _DistributionScreenState extends ConsumerState<DistributionScreen> {
   DistributionTimeFrame _timeFrame = DistributionTimeFrame.daily;
+  bool _showStats = false;
+  TimeFrame _selectedTimeFrame = TimeFrame.weekly;
+  int _weekOffset = 0;
 
   @override
   Widget build(BuildContext context) {
-    final tasks = ref.watch(taskHistoryProvider);
-    final currentUser = ref.watch(currentUserProvider);
-    final predefinedTasks = ref.watch(predefinedTasksProvider);
-    
-    final distribution = _calculateDistribution(tasks, currentUser.name);
-    final message = _generateMessage(distribution);
-    final isImbalanced = false;
-    
-    // Get recommended task if imbalanced
-    final recommendedTask = null;
-
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
@@ -42,11 +48,152 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Padding(
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment<bool>(
+                  value: false,
+                  label: Text('Distribution'),
+                  icon: Icon(Icons.pie_chart),
+                ),
+                ButtonSegment<bool>(
+                  value: true,
+                  label: Text('Mental Load'),
+                  icon: Icon(Icons.analytics),
+                ),
+              ],
+              selected: {_showStats},
+              onSelectionChanged: (Set<bool> selected) {
+                setState(() {
+                  _showStats = selected.first;
+                });
+              },
+            ),
+          ),
+          Expanded(
+            child: _showStats ? buildStatsContent() : buildDistributionContent(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildStatsContent() {
+    final thoughts = ref.watch(thoughtsProvider);
+    
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: TimeFrame.values.map((timeFrame) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: FilterChip(
+                    label: Text(timeFrame.toString().split('.').last),
+                    selected: _selectedTimeFrame == timeFrame,
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedTimeFrame = timeFrame;
+                        _weekOffset = 0;
+                      });
+                    },
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_selectedTimeFrame == TimeFrame.weekly) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: () {
+                    setState(() {
+                      _weekOffset--;
+                    });
+                  },
+                ),
+                Text(
+                  _weekOffset == 0
+                      ? 'This Week'
+                      : _weekOffset == -1
+                          ? 'Last Week'
+                          : '${_weekOffset.abs()} Weeks Ago',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: _weekOffset < 0
+                      ? () {
+                          setState(() {
+                            _weekOffset++;
+                          });
+                        }
+                      : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+          Expanded(
+            child: thoughts.isEmpty
+                ? const Center(child: Text('No thoughts yet'))
+                : Column(
+                    children: [
+                      Expanded(child: buildThoughtsChart(thoughts)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        child: Column(
+                          children: [
+                            _buildLegendItem(
+                              'Your mental load',
+                              AppColors.userColor,
+                              isDashed: false,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildLegendItem(
+                              'Partner\'s mental load',
+                              AppColors.partnerColor,
+                              isDashed: false,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildDistributionContent() {
+    final tasks = ref.watch(taskHistoryProvider);
+    final currentUser = ref.watch(currentUserProvider);
+    final predefinedTasks = ref.watch(predefinedTasksProvider);
+    
+    final distribution = _calculateDistribution(tasks, currentUser.name);
+    final message = _generateMessage(distribution);
+    final isImbalanced = (distribution.partnerPercentage - distribution.userPercentage).abs() > 10;
+    
+    final recommendedTask = isImbalanced && distribution.userPercentage < distribution.partnerPercentage
+        ? _getRecommendedTask(predefinedTasks)
+        : null;
+
+    return SingleChildScrollView(
+      child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Time frame selector
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: DistributionTimeFrame.values.map((frame) {
@@ -79,7 +226,6 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
             ),
             const SizedBox(height: 16),
             
-            // Message card
             Card(
               color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
               child: Padding(
@@ -102,9 +248,8 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
             ),
             const SizedBox(height: 24),
             
-            // Donut chart
             SizedBox(
-              height: 200,
+              height: 300,
               child: PieChart(
                 PieChartData(
                   sections: [
@@ -112,22 +257,21 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
                       value: distribution.partnerPercentage,
                       title: '${distribution.partnerPercentage.round()}%',
                       color: AppColors.partnerColor,
-                      radius: 60,
+                      radius: 100,
                     ),
                     PieChartSectionData(
                       value: distribution.userPercentage,
                       title: '${distribution.userPercentage.round()}%',
                       color: AppColors.userColor,
-                      radius: 60,
+                      radius: 100,
                     ),
                   ],
                   sectionsSpace: 2,
-                  centerSpaceRadius: 25,
+                  centerSpaceRadius: 40,
                 ),
               ),
             ),
             
-            // Legend
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -175,8 +319,250 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
       ),
     );
   }
-  
-  // Helper methods...
+
+  Widget buildThoughtsChart(List<Thought> thoughts) {
+    final currentUser = ref.watch(currentUserProvider);
+    final now = DateTime.now();
+    
+    final (period, format, minX, maxX, xInterval) = switch (_selectedTimeFrame) {
+      TimeFrame.weekly => (
+        Duration(days: 1),
+        'E',               // Day format (Mon, Tue, etc.)
+        -6.0,             // 6 days back + today
+        0.0,              // Today
+        1.0,              // Show every day
+      ),
+      TimeFrame.monthly => (
+        Duration(days: 7),  // Weekly period
+        'w',               // Week format
+        -3.0,             // 3 weeks back + current week
+        0.0,              // Current week
+        1.0,              // Show every week
+      ),
+    };
+
+    final adjustedNow = _selectedTimeFrame == TimeFrame.weekly
+        ? now.add(Duration(days: _weekOffset * 7))
+        : now;
+    
+    if (thoughts.isEmpty) {
+      thoughts = MockData.generateMockThoughts();
+    }
+
+    final spots = _calculateDataPoints(
+      thoughts,
+      currentUser.id,
+      period,
+      minX,
+      maxX,
+    );
+
+    double maxY = 0;
+    for (var spot in [...spots.real, ...spots.partner]) {
+      if (spot.y > maxY) maxY = spot.y;
+    }
+    maxY = (maxY * 1.2).roundToDouble();
+    if (maxY % 5 != 0) {
+      maxY = (maxY / 5).ceil() * 5;
+    }
+    maxY = maxY == 0 ? 10 : maxY;
+
+    return SizedBox(
+      height: 300,
+      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(show: true),
+          titlesData: FlTitlesData(
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: xInterval,
+                reservedSize: 42,
+                getTitlesWidget: (value, meta) {
+                  final date = adjustedNow.add(Duration(
+                    days: value.toInt(),
+                  ));
+                  
+                  final text = switch (_selectedTimeFrame) {
+                    TimeFrame.weekly => value == 0 
+                      ? 'Today'
+                      : value == -1
+                        ? 'Yesterday'
+                        : DateFormat('E').format(date),
+                    TimeFrame.monthly => value == 0 
+                      ? 'This week' 
+                      : value == -1 
+                        ? 'Last week'
+                        : value == -2
+                          ? '2 weeks ago'
+                          : '3 weeks ago',
+                  };
+                  
+                  return SideTitleWidget(
+                    axisSide: meta.axisSide,
+                    child: Text(
+                      text,
+                      style: const TextStyle(fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: maxY <= 20 ? 2 : 5,
+                getTitlesWidget: (value, meta) {
+                  return Text(value.toInt().toString());
+                },
+                reservedSize: 30,
+              ),
+            ),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: Theme.of(context).dividerColor),
+          ),
+          minX: minX,
+          maxX: maxX,
+          minY: 0,
+          maxY: maxY,
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots.real,
+              isCurved: true,
+              color: AppColors.userColor,
+              dotData: FlDotData(show: true),
+            ),
+            LineChartBarData(
+              spots: spots.predicted,
+              isCurved: true,
+              color: AppColors.userColor,
+              dotData: FlDotData(show: false),
+              dashArray: [5, 5],
+            ),
+            LineChartBarData(
+              spots: spots.partner,
+              isCurved: true,
+              color: AppColors.partnerColor,
+              dotData: FlDotData(show: true),
+            ),
+            LineChartBarData(
+              spots: spots.partnerPredicted,
+              isCurved: true,
+              color: AppColors.partnerColor,
+              dotData: FlDotData(show: false),
+              dashArray: [5, 5],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  _DataPoints _calculateDataPoints(
+    List<Thought> thoughts,
+    String userId,
+    Duration period,
+    double minX,
+    double maxX,
+  ) {
+    final now = DateTime.now();
+    final referenceDate = _selectedTimeFrame == TimeFrame.weekly
+        ? now.add(Duration(days: _weekOffset * 7))
+        : now;
+        
+    final Map<double, List<double>> realPoints = {};
+    final Map<double, List<double>> partnerPoints = {};
+
+    for (double x = minX; x <= maxX; x += 1) {
+      realPoints[x] = [];
+      partnerPoints[x] = [];
+    }
+
+    for (final thought in thoughts) {
+      final difference = thought.date.difference(referenceDate);
+      double x = 0;
+      
+      if (_selectedTimeFrame == TimeFrame.monthly) {
+        x = difference.inDays / 7;
+      } else {
+        x = difference.inDays.toDouble();
+      }
+      
+      if (x >= minX && x <= maxX) {
+        if (thought.userId == userId) {
+          realPoints[x.roundToDouble()]?.add(thought.mentalLoad);
+        } else {
+          partnerPoints[x.roundToDouble()]?.add(thought.mentalLoad);
+        }
+      }
+    }
+
+    List<FlSpot> realSpots = [];
+    List<FlSpot> partnerSpots = [];
+    List<FlSpot> predictedSpots = [];
+
+    double getLastKnownValue(List<FlSpot> spots) {
+      return spots.isEmpty ? 0 : spots.last.y;
+    }
+
+    for (final entry in realPoints.entries.where((e) => e.key <= 0)) {
+      if (entry.value.isNotEmpty) {
+        final totalLoad = entry.value.reduce((a, b) => a + b);
+        realSpots.add(FlSpot(entry.key, totalLoad));
+      } else if (realSpots.isNotEmpty) {
+        realSpots.add(FlSpot(entry.key, getLastKnownValue(realSpots)));
+      }
+    }
+
+    for (final entry in partnerPoints.entries.where((e) => e.key <= 0)) {
+      if (entry.value.isNotEmpty) {
+        final totalLoad = entry.value.reduce((a, b) => a + b);
+        partnerSpots.add(FlSpot(entry.key, totalLoad));
+      } else if (partnerSpots.isNotEmpty) {
+        partnerSpots.add(FlSpot(entry.key, getLastKnownValue(partnerSpots)));
+      }
+    }
+
+    realSpots.sort((a, b) => a.x.compareTo(b.x));
+    partnerSpots.sort((a, b) => a.x.compareTo(b.x));
+
+    if (realSpots.isNotEmpty) {
+      final lastValue = realSpots.last.y;
+      final trend = realSpots.length > 1 
+          ? (realSpots.last.y - realSpots[realSpots.length - 2].y)
+          : 0.0;
+      
+      predictedSpots = [
+        FlSpot(0, lastValue),
+        FlSpot(maxX, lastValue + (trend * maxX)),
+      ];
+    }
+
+    List<FlSpot> partnerPredictedSpots = [];
+    if (partnerSpots.isNotEmpty) {
+      final lastValue = partnerSpots.last.y;
+      final trend = partnerSpots.length > 1 
+          ? (partnerSpots.last.y - partnerSpots[partnerSpots.length - 2].y)
+          : 0.0;
+      
+      partnerPredictedSpots = [
+        FlSpot(0, lastValue),
+        FlSpot(maxX, lastValue + (trend * maxX)),
+      ];
+    }
+
+    return _DataPoints(
+      realSpots,
+      predictedSpots,
+      partnerSpots,
+      partnerPredictedSpots,
+    );
+  }
 
   Distribution _calculateDistribution(List<TaskHistoryItem> tasks, String userName) {
     final filteredTasks = tasks.where((task) {
@@ -201,14 +587,12 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
 
     final totalMinutes = userDuration.inMinutes + partnerDuration.inMinutes;
     
-    final distribution = Distribution(
+    return Distribution(
       userPercentage: totalMinutes == 0 ? 0 : (userDuration.inMinutes / totalMinutes) * 100,
       partnerPercentage: totalMinutes == 0 ? 0 : (partnerDuration.inMinutes / totalMinutes) * 100,
       userDuration: userDuration,
       partnerDuration: partnerDuration,
     );
-
-    return distribution;
   }
 
   String _generateMessage(Distribution distribution) {
@@ -223,23 +607,31 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
     }
   }
 
-  Widget _buildLegendItem(String text, Color color) {
+  Widget _buildLegendItem(String text, Color color, {bool isDashed = false}) {
     return Row(
       children: [
         Container(
-          width: 16,
-          height: 16,
+          width: 24,
+          height: 2,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(4),
+            border: isDashed ? Border.all(color: color) : null,
           ),
+          child: isDashed
+              ? LayoutBuilder(
+                  builder: (context, constraints) {
+                    return CustomPaint(
+                      size: Size(constraints.maxWidth, 2),
+                      painter: DashedLinePainter(color: color),
+                    );
+                  },
+                )
+              : null,
         ),
         const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 14),
-          ),
+        Text(
+          text,
+          style: const TextStyle(fontSize: 14),
         ),
       ],
     );
@@ -257,7 +649,6 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
   PredefinedTask? _getRecommendedTask(List<PredefinedTask> tasks) {
     if (tasks.isEmpty) return null;
     
-    // Sort by effort and return highest priority task
     final sortedTasks = List<PredefinedTask>.from(tasks)
       ..sort((a, b) => b.effort.compareTo(a.effort));
     return sortedTasks.first;
@@ -275,7 +666,6 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
       ),
     );
 
-    // Show feedback for task completion
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Task "${task.title}" completed'),
@@ -283,4 +673,33 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
       ),
     );
   }
+}
+
+class DashedLinePainter extends CustomPainter {
+  final Color color;
+
+  DashedLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2;
+    
+    const dashWidth = 4;
+    const dashSpace = 4;
+    var start = 0.0;
+    
+    while (start < size.width) {
+      canvas.drawLine(
+        Offset(start, 0),
+        Offset(start + dashWidth, 0),
+        paint,
+      );
+      start += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
