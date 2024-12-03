@@ -34,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.pie_chart),
-            label: 'Work Distribution',
+            label: 'Distribution',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.psychology),

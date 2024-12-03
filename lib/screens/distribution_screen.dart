@@ -44,7 +44,7 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        title: const Text('Work Distribution'),
+        title: const Text('Distribution'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -56,13 +56,13 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
               segments: const [
                 ButtonSegment<bool>(
                   value: false,
-                  label: Text('Distribution'),
-                  icon: Icon(Icons.pie_chart),
+                  label: Text('Time'),
+                  icon: Icon(Icons.timer),
                 ),
                 ButtonSegment<bool>(
                   value: true,
                   label: Text('Mental Load'),
-                  icon: Icon(Icons.analytics),
+                  icon: Icon(Icons.psychology),
                 ),
               ],
               selected: {_showStats},
@@ -641,7 +641,7 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
     if (hours > 0) {
-      return '$hours${minutes > 0 ? 'h and $minutes min' : 'h'}';
+      return '$hours${minutes > 0 ? 'h $minutes min' : 'h'}';
     }
     return '$minutes min';
   }
