@@ -26,7 +26,7 @@ class ThoughtsScreen extends ConsumerStatefulWidget {
 
 class _ThoughtsScreenState extends ConsumerState<ThoughtsScreen> {
   final _thoughtController = TextEditingController();
-  double _mentalLoad = 1;
+  double _mentalLoad = 5;
   bool _showInputForm = false;
   bool _showMentalLoadSlider = false;
   int? _selectedTemplateIndex;
