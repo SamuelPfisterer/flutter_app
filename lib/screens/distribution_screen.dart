@@ -306,8 +306,16 @@ class _DistributionScreenState extends ConsumerState<DistributionScreen> {
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: recommendedTask == null ? null : () => _executeTask(context, recommendedTask),
-                        icon: const Icon(Icons.play_arrow),
-                        label: const Text('Execute Task'),
+                        icon: const Icon(Icons.add_task),
+                        label: const Text('Complete Task'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
                     ],
                   ),
