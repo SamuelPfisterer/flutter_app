@@ -179,7 +179,7 @@ class TaskHistoryScreen extends ConsumerWidget {
                       );
                     },
                     icon: const Icon(Icons.edit),
-                    label: const Text('Manage Tasks'),
+                    label: const Text('Manage Available Tasks'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -230,8 +230,8 @@ class TaskHistoryScreen extends ConsumerWidget {
                   );
                 }
               },
-              label: const Text('Execute Task'),
-              icon: const Icon(Icons.add),
+              label: const Text('Task Menu'),
+              icon: const Icon(Icons.playlist_add),
             )
           : null,
     );

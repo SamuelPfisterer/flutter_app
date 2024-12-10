@@ -19,7 +19,7 @@ class TaskSelectionDialog extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Select Task',
+              'Select Task to Complete',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
@@ -50,7 +50,7 @@ class TaskSelectionDialog extends ConsumerWidget {
                 );
               },
               icon: const Icon(Icons.edit),
-              label: const Text('Manage Tasks'),
+              label: const Text('Manage Available Tasks'),
             ),
           ],
         ),
