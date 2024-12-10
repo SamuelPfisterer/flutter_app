@@ -376,7 +376,7 @@ class _ThoughtsScreenState extends ConsumerState<ThoughtsScreen> {
                           const SizedBox(height: 16),
                           ElevatedButton.icon(
                             onPressed: _thoughtController.text.isEmpty
-                                ? null // Disable button when no text
+                                ? null
                                 : () {
                                     if (_thoughtController.text.isNotEmpty) {
                                       ref.read(thoughtsProvider.notifier).addThought(
@@ -388,6 +388,15 @@ class _ThoughtsScreenState extends ConsumerState<ThoughtsScreen> {
                                           userAvatar: ref.read(currentUserProvider).avatarUrl,
                                         ),
                                       );
+                                      
+                                      // Show feedback
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Thought added: "${_thoughtController.text}"'),
+                                          duration: const Duration(seconds: 2),
+                                        ),
+                                      );
+                                      
                                       _thoughtController.clear();
                                       setState(() {
                                         _showInputForm = false;
