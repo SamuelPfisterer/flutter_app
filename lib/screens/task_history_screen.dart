@@ -12,6 +12,7 @@ import '../providers/current_user_provider.dart';
 import '../widgets/thank_back_dialog.dart';
 import '../theme/app_theme.dart';
 import '../utils/task_utils.dart';
+import './task_management_screen.dart';
 
 class TaskHistoryScreen extends ConsumerWidget {
   const TaskHistoryScreen({super.key});
@@ -170,9 +171,11 @@ class TaskHistoryScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
                     onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => const TaskSelectionDialog(),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TaskManagementScreen(),
+                        ),
                       );
                     },
                     icon: const Icon(Icons.edit),
